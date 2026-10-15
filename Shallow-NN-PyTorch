@@ -1,0 +1,64 @@
+import torch
+import numpy as np
+import matplotlib.pyplot as plt
+
+## XOR operator dataset -- can change this to OR/AND dataset
+X = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
+Y = np.array([0, 1, 1, 0])
+
+class ShallowNeuralNetwork(torch.nn.Module): ## Initialize linear, nonlinear functions, forward pass
+    def __init__(self, input_features, output_features):
+        super().__init__()
+        self.in_features = input_features
+        self.out_features = output_features
+
+        self.linear1 = torch.nn.Linear(self.in_features, self.out_features)
+        self.linear2 = torch.nn.Linear(self.out_features, 1)
+        self.tanh = torch.nn.Tanh()
+        self.sigmoid = torch.nn.Sigmoid()
+
+    def forward(self, x):
+        z1 = self.linear1(x)
+        a1 = self.tanh(z1)
+        z2 = self.linear2(a1)
+        a2 = self.sigmoid(z2)
+        return a2
+
+model = ShallowNeuralNetwork(2, 4)
+optimizer = torch.optim.SGD(model.parameters(), lr = 0.1)
+loss_fn = torch.nn.BCELoss()
+
+def train(X, Y, model):
+    total_lost = 0.0
+    optimizer.zero_grad()
+    prediction = model.forward(X)
+    loss = loss_fn(prediction, Y)
+    total_lost += loss.item()
+    
+    loss.backward()
+    optimizer.step()
+    return loss.item()
+
+epochs = 10000
+
+model.train() ## training
+for epoch in range(epochs):
+    X_torch = torch.tensor(X, dtype = torch.float32)
+    Y_torch = torch.FloatTensor(Y).reshape(-1, 1)
+    loss = train(X_torch, Y_torch, model)
+    if epoch % 1000==0:
+        print(f"Epoch: {epoch}\tLoss: {loss}")
+
+model.eval() ## validation
+for x, y in zip(X, Y):
+    x_torch = torch.tensor(x, dtype = torch.float32)
+    y_torch = torch.FloatTensor(y).reshape(-1, 1)
+    prediction = model.forward(x_torch)
+    classification = torch.round(prediction, decimals = 0)
+    print(f"Predicting output of {x}:\nY_true: {y.item()} Y_hat: {classification.item()}")
+
+
+
+    
+
+
