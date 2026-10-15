@@ -1,0 +1,80 @@
+import random
+from math import log, exp
+import numpy as np
+
+## XOR operator dataset
+X = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
+Y = np.array([0, 1, 1, 0])
+
+class ShallowNeuralNetwork(): ## Initialize weights, linear and nonlinear functions
+    def __init__(self):
+        self.W1 = np.random.randn(4, 2)
+        self.b1 = np.zeros(4)
+        self.w2 = np.random.randn(4)
+        self.b2 = 0.0
+
+    def sigmoid(self, x):
+        return 1 / (1+np.exp(-x))
+
+    def tanh(self, x):
+        return 2 * self.sigmoid(2 * x) - 1
+
+    def forward(self, x):
+        z1 = np.dot(self.W1, x) + self.b1
+        a1 = self.tanh(z1)
+        z2 = np.inner(self.w2, a1) + self.b2
+        a2 = self.sigmoid(z2)
+
+        return a1, a2
+
+model = ShallowNeuralNetwork()
+
+def train(X, Y, model, lr):
+    loss = 0.0
+    dW1 = np.zeros((4, 2))
+    db1 = np.zeros(4)
+    dw2 = np.zeros(4)
+    db2 = 0
+    m = len(X)
+
+    for x, y in zip(X, Y):
+        a1, prediction = model.forward(x)
+
+        if y == 0:
+            loss -= log(1 - prediction)
+        if y == 1:
+            loss -= log(prediction)
+
+        dz2 = prediction - y
+
+        dw2 += dz2 * a1
+        db2 += dz2
+        dz1 = dz2 * model.w2 * (1 - a1**2)
+        dW1 += np.outer(dz1, x)
+        db1 += dz1
+
+    dW1 /= m
+    db1 /= m
+    dw2 /= m
+    db2 /= m
+    loss /= m
+
+    model.W1 -= lr * dW1
+    model.b1 -= lr * db1
+    model.w2 -= lr * dw2
+    model.b2 -= lr * db2
+
+    return loss
+
+epochs = 10000
+
+for epoch in range(epochs): ## training
+    cost = train(X, Y, model, 0.1)
+    if epoch % 1000 == 0:
+        print(f"Epoch {epoch}\tLoss: {cost}")
+
+for x, y in zip(X, Y): ## validation
+    _, prediction = model.forward(x)
+    result = int(np.round(prediction))
+    print(f"Predicting {x}: {result}")
+

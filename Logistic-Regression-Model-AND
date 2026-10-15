@@ -1,0 +1,64 @@
+import random
+from math import exp, log
+
+## AND operator dataset
+X = [[0, 0], [0, 1], [1, 0], [1, 1]]
+y = [0, 0, 0, 1]
+
+
+class LogisticRegressionModel(): ## Initialize weights, linear and nonlinear functions
+    def __init__(self):
+        self.W = [random.random(), random.random()]
+        self.b = random.random()
+
+    def sigmoid(self, x):
+        return 1/(1+exp(-x))
+
+    def forward(self, x):
+        z = self.W[0]*x[0]+self.W[1]*x[1]+self.b
+        a = self.sigmoid(z)
+
+        return a
+
+model = LogisticRegressionModel()
+
+def train(X, y, model, lr):
+    dw0 = 0.0
+    dw1 = 0.0
+    db = 0.0
+    m = len(X)
+    loss = 0.0
+    for x, y in zip(X, y):
+        prediction = model.forward(x)
+        if y == 0: 
+            loss -= log(1 - prediction)  
+        if y == 1:
+            loss -= log(prediction)
+
+        dw0 += (prediction-y)*x[0]
+        dw1 += (prediction-y)*x[1]
+        db += (prediction-y)
+
+    avg_loss = loss/m
+    dw0 /= m
+    dw1 /= m
+    db /= m
+    model.W[0] = model.W[0] - lr * dw0
+    model.W[1] = model.W[1] - lr * dw1
+    model.b = model.b - lr * db
+
+    return avg_loss
+
+epochs = 10000
+
+for epoch in range(epochs):
+    cost = train(X, y, model, 0.8)
+    if epoch % 100 == 0:
+        print(f"Epoch {epoch}\tLoss: {cost}")
+
+
+print(f"predicting (0,0): {model.forward((0, 0))}")
+print(f"predicting (0,1): {model.forward((0, 1))}")
+print(f"predicting (1,0): {model.forward((1, 0))}")
+print(f"predicting (1,1): {model.forward((1, 1))}")
+    
