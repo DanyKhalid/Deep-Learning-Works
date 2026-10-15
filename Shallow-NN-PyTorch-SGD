@@ -1,0 +1,55 @@
+## Implementing Stochastic Gradient Descent (SGD) + SNN with PyTorch
+import torch
+import numpy as np
+
+## AND/OR/XOR operator dataset
+X = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
+Y = np.array([0, 1, 1, 0])
+
+class ShallowNeuralNetwork(torch.nn.Module):
+    def __init__(self, in_features, out_features):
+        super().__init__()
+
+        self.linear1 = torch.nn.Linear(in_features, out_features)
+        self.linear2 = torch.nn.Linear(out_features, 1)
+
+        self.tanh = torch.nn.Tanh()
+        self.sigmoid = torch.nn.Sigmoid()
+
+    def forward(self, X):
+        z1 = self.linear1(X)
+        a1 = self.tanh(z1)
+        z2 = self.linear2(a1)
+        a2 = self.sigmoid(z2)
+
+        return a2
+
+model = ShallowNeuralNetwork(2, 4)
+optimizer = torch.optim.SGD(model.parameters(), lr = 0.1)
+loss_fn = torch.nn.BCELoss()
+X_torch = torch.tensor(X, dtype = torch.float32)
+Y_torch = torch.FloatTensor(Y).reshape(-1, 1)
+
+def train(X, Y, model):
+    total_cost = 0.0
+    for x, y in zip(X, Y):
+        optimizer.zero_grad()
+        prediction = model(x)
+        loss = loss_fn(prediction, y)
+        total_cost += loss.item()
+        loss.backward()
+        optimizer.step() ## SGD: optimizer runs len(input) times every epoch
+
+    return total_cost/len(X)
+
+epochs = 10000
+
+model.train()
+for epoch in range(epochs):
+    loss = train(X_torch, Y_torch, model)
+    if epoch % 1000 == 0:
+        print(f"epoch: {epoch} loss: {loss}")
+
+model.eval()
+for x, X, y in zip(X_torch, X, Y):
+    print(f"Predicting {X}: {int(torch.round(model(x)))}\tTrue Y: {y}")
