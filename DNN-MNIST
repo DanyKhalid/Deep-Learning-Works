@@ -1,0 +1,87 @@
+import torch
+import numpy as np
+from torchvision import datasets, transforms
+import json
+import os
+
+## Preprocess MNIST dataset
+DATA_DIR = "/workspaces/Deep-Learning-Works/data"
+
+train_dataset = datasets.MNIST(
+    DATA_DIR, train=True, download=True, transform=transforms.ToTensor()
+)
+test_dataset = datasets.MNIST(
+    DATA_DIR, train=False, download=True, transform=transforms.ToTensor()
+)
+
+HIDDEN_LAYERS = 5
+BATCH_SIZE = 12
+
+train_loader = torch.utils.data.DataLoader(train_dataset, batch_size = BATCH_SIZE, shuffle = True)
+test_loader = torch.utils.data.DataLoader(test_dataset, batch_size = BATCH_SIZE)
+
+class MLP(torch.nn.Module):
+    def __init__(self, hidden_features = [512, 256, 128, 64, 32]):
+        super().__init__()
+
+        self.linear_list = []
+        self.linear_list.append(torch.nn.Linear(28*28, hidden_features[0]))
+        for i in range(len(hidden_features)-1):
+            self.linear_list.append(torch.nn.Linear(hidden_features[i], hidden_features[i+1]))
+        self.linear_list.append(torch.nn.Linear(hidden_features[-1], 10))
+        self.linear_list = torch.nn.ModuleList(self.linear_list)
+        
+        self.relu = torch.nn.ReLU()
+        self.dropout = torch.nn.Dropout(p = 0.5)
+
+    def forward(self, x):
+        a = x.view(-1, 28*28)
+        for i in range(len(self.linear_list)):
+            z = self.linear_list[i](a)
+            if (i == len(self.linear_list)-1) :
+                logits = z
+            else:
+                z = self.dropout(z)
+                a = self.relu(z)
+
+        return logits
+
+model = MLP()
+loss_fn = torch.nn.CrossEntropyLoss()
+optimizer = torch.optim.SGD(model.parameters(), lr = 0.01)
+
+def train(model): ## Mini-batch GD
+    total_loss = 0.0
+    for i, data in enumerate(train_loader, 0):
+        x, y = data
+        logits = model(x)
+        
+        loss = loss_fn(logits, y) ## LogSoftmax gets applied on logits (into prob) in CELoss, y is the index (the true number)
+        total_loss += loss.item()
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        if (i+1)%4000 == 0:
+            print(f'Epoch: {epoch+1},\tBatch Number {i+1}:\tLoss: {loss.item()}')
+
+epochs = 10
+
+model.train()
+for epoch in range(epochs):
+    train(model)
+
+model.eval()
+n_predict = 0
+n_correct = 0
+for data in test_loader:
+    x, y = data
+    logits = model(x)
+    highest_logit, output = torch.max(logits, 1)
+
+    n_predict += len(logits)
+    n_correct += (y == output).sum()
+
+accuracy = n_correct / n_predict
+print(f"Accuracy: {accuracy:.2f}")
+
