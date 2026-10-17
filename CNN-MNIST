@@ -1,0 +1,93 @@
+import torch
+from torch import nn, optim
+from torchvision import datasets, transforms
+from torch.utils.data import DataLoader, random_split
+from tqdm import tqdm
+
+train_data = datasets.MNIST("./data", train = True, download = True, transform = transforms.ToTensor())
+test_data = datasets.MNIST("./data", train = False, download = True, transform = transforms.ToTensor())
+train_set, val_set = random_split(train_data, [50000, 10000])
+
+train_loader = DataLoader(train_set, batch_size = 64, shuffle = True)
+val_loader = DataLoader(val_set, batch_size = 64)
+test_loader = DataLoader(test_data, batch_size = 64)
+
+class CNN(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.layer1 = nn.Sequential(
+            nn.Conv2d(1, 6, 3),
+            nn.ReLU(),
+            nn.MaxPool2d(2)
+        )
+
+        self.layer2 = nn.Sequential(
+            nn.Conv2d(6, 16, 5),
+            nn.ReLU(),
+            nn.MaxPool2d(2)
+        )
+
+        self.fc3 = nn.Linear(256, 120)
+        self.layer3 = nn.Sequential(
+            self.fc3,
+            nn.ReLU(),
+            nn.Dropout(p = 0.5)
+        )
+
+        self.fc4 = nn.Linear(120, 80)
+        self.layer4 = nn.Sequential(
+            self.fc4,
+            nn.ReLU(),
+            nn.Dropout(p = 0.5)
+        )
+
+        self.fc5 = nn.Linear(80, 10)
+        self.layer5 = nn.Sequential(
+            self.fc5,
+            nn.ReLU(),
+            nn.Dropout(p = 0.5)
+        )
+
+        for layer in (self.fc3, self.fc4, self.fc5):
+            nn.init.xavier_uniform_(layer.weight)
+
+    def forward(self, x):
+        out = self.layer1(x)
+        out = self.layer2(out)
+        out = torch.flatten(out, 1)
+        out = self.layer3(out)
+        out = self.layer4(out)
+        return self.layer5(out)
+
+def test(model, data_loader):
+    model.eval()
+    correct, total = 0, 0
+    for X, y in data_loader:
+        logits = model(X)
+        prediction = logits.argmax(dim = 1)
+        correct += (prediction == y).sum().item()
+        total += y.size(0)
+    print(f"Accuracy: {correct/total:.4f}")
+
+def train(model, data_loader):
+    model.train()
+    total_loss = 0.0
+    for X, y in tqdm(data_loader):
+        logits = model(X)
+        batch_loss = criterion(logits, y)
+        total_loss += batch_loss.item()*y.size(0)
+        optimizer.zero_grad()
+        batch_loss.backward()
+        optimizer.step()
+
+    print(f"Loss: {total_loss/len(data_loader.dataset)}")
+    test(model, val_loader)
+
+        
+model = CNN()
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr = 1e-4)
+
+for epoch in range(5):
+    train(model, train_loader)
+
